@@ -141,7 +141,8 @@ This is a multi-module workspace, so a consumer pulls in only what they use:
 
 ## Contributing
 
-Issues and pull requests are welcome. Each module is independently testable:
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for
+the project layout and local workflow. Each module is independently testable:
 
 ```sh
 go test ./...                       # root module

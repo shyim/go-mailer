@@ -1,0 +1,61 @@
+<svg width="1280" height="640" viewBox="0 0 1280 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="640" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a1830"/>
+      <stop offset="1" stop-color="#0d0b1a"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#c7d2fe"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Subtle envelope motif, top-right -->
+  <g opacity="0.10" stroke="#818cf8" stroke-width="3" fill="none">
+    <rect x="900" y="90" width="300" height="200" rx="16"/>
+    <path d="M900 110 L1050 215 L1200 110"/>
+  </g>
+
+  <!-- Accent bar -->
+  <rect x="120" y="190" width="64" height="8" rx="4" fill="url(#accent)"/>
+
+  <!-- Title -->
+  <text x="118" y="300" font-family="'Helvetica Neue', Arial, sans-serif" font-size="116" font-weight="800" fill="url(#title)" letter-spacing="-2">gomailer</text>
+
+  <!-- Tagline -->
+  <text x="122" y="372" font-family="'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="500" fill="#a5b4fc">An idiomatic, stdlib-first email library for Go</text>
+
+  <!-- Feature chips -->
+  <g font-family="'Helvetica Neue', Arial, sans-serif" font-size="26" font-weight="600">
+    <g>
+      <rect x="120" y="430" width="172" height="56" rx="28" fill="#ffffff" fill-opacity="0.06" stroke="#818cf8" stroke-opacity="0.35"/>
+      <text x="206" y="467" fill="#e0e7ff" text-anchor="middle">SMTP</text>
+    </g>
+    <g>
+      <rect x="308" y="430" width="200" height="56" rx="28" fill="#ffffff" fill-opacity="0.06" stroke="#818cf8" stroke-opacity="0.35"/>
+      <text x="408" y="467" fill="#e0e7ff" text-anchor="middle">sendmail</text>
+    </g>
+    <g>
+      <rect x="524" y="430" width="148" height="56" rx="28" fill="#ffffff" fill-opacity="0.06" stroke="#818cf8" stroke-opacity="0.35"/>
+      <text x="598" y="467" fill="#e0e7ff" text-anchor="middle">DSN</text>
+    </g>
+    <g>
+      <rect x="688" y="430" width="216" height="56" rx="28" fill="#ffffff" fill-opacity="0.06" stroke="#818cf8" stroke-opacity="0.35"/>
+      <text x="796" y="467" fill="#e0e7ff" text-anchor="middle">middleware</text>
+    </g>
+    <g>
+      <rect x="920" y="430" width="212" height="56" rx="28" fill="#ffffff" fill-opacity="0.06" stroke="#818cf8" stroke-opacity="0.35"/>
+      <text x="1026" y="467" fill="#e0e7ff" text-anchor="middle">OpenTelemetry</text>
+    </g>
+  </g>
+
+  <!-- Bottom: import path -->
+  <text x="120" y="566" font-family="'SF Mono', 'JetBrains Mono', monospace" font-size="28" fill="#6b7280">go get github.com/shyim/go-mailer</text>
+</svg>
