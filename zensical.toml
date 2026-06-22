@@ -23,6 +23,7 @@ nav = [
   { "Guides" = [
     "guides/index.md",
     { "Sending mail" = "guides/sending-mail.md" },
+    { "Amazon SES" = "guides/ses.md" },
     { "DSN configuration" = "guides/dsn.md" },
     { "Observability (OTLP)" = "guides/observability.md" },
     { "Testing" = "guides/testing.md" },

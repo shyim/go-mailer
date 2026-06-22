@@ -24,7 +24,7 @@ round-robin / failover / named-transport routing, and optional OpenTelemetry.
   writer, and the SMTP conversation driven directly over a `net.Conn`. No
   third-party dependencies in the core beyond `golang.org/x/net` (IDNA).
 - **Multiple transports** — SMTP / ESMTP (STARTTLS, AUTH, SMTPUTF8), local
-  `sendmail`, and a null sink.
+  `sendmail`, Amazon SES, and a null sink.
 - **Resilient routing** — round-robin, failover, and named-transport routing,
   composable as decorators.
 - **Middleware pipeline** — `BeforeSend` (mutate / reject) and `AfterSend`
@@ -42,6 +42,7 @@ round-robin / failover / named-transport routing, and optional OpenTelemetry.
 go get github.com/shyim/go-mailer                   # core: MIME, null, composites, DSN, middleware
 go get github.com/shyim/go-mailer/transport/smtp    # SMTP / ESMTP transport
 go get github.com/shyim/go-mailer/transport/sendmail
+go get github.com/shyim/go-mailer/transport/ses     # Amazon SES (isolates the AWS SDK)
 go get github.com/shyim/go-mailer/middleware/otelmw # OpenTelemetry traces + metrics
 ```
 
@@ -137,6 +138,7 @@ This is a multi-module workspace, so a consumer pulls in only what they use:
 | `github.com/shyim/go-mailer` | core: MIME, null transport, composites, DSN, middleware |
 | `…/transport/smtp` | the SMTP / ESMTP transport |
 | `…/transport/sendmail` | the `sendmail` transport |
+| `…/transport/ses` | the Amazon SES transport (isolates the AWS SDK) |
 | `…/middleware/otelmw` | OpenTelemetry traces & metrics |
 
 ## Contributing

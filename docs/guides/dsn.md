@@ -86,12 +86,14 @@ go get github.com/shyim/go-mailer/transport/sendmail
 | `smtp://` | SMTP / ESMTP with opportunistic STARTTLS | 25 |
 | `smtps://` | SMTP over implicit TLS (TLS on connect) | 465 |
 | `sendmail://` | pipes raw MIME to a local `sendmail` binary | — |
+| `ses://` | Amazon SES (see the [SES guide](ses.md)) | — |
 
 ```go
 transport.FromDSN("null://default", transport.Deps{})
 transport.FromDSN("smtp://user:pass@mail.example.com:587", transport.Deps{})
 transport.FromDSN("smtps://user:pass@mail.example.com", transport.Deps{})
 transport.FromDSN("sendmail://default?command=/usr/sbin/sendmail+-t+-i", transport.Deps{})
+transport.FromDSN("ses://default?region=us-east-1", transport.Deps{})
 ```
 
 The full per-scheme option table lives in

@@ -15,9 +15,9 @@ jobs:
     strategy:
       matrix:
         # Multi-module workspace: the root module (abstractions + null), the
-        # opt-in transport plug-ins (smtp, sendmail), and the optional otelmw
-        # submodule (which carries the OpenTelemetry deps).
-        module: [".", "transport/smtp", "transport/sendmail", "middleware/otelmw"]
+        # opt-in transport plug-ins (smtp, sendmail, ses), and the optional
+        # otelmw submodule (which carries the OpenTelemetry deps).
+        module: [".", "transport/smtp", "transport/sendmail", "transport/ses", "middleware/otelmw"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        module: [".", "transport/smtp", "transport/sendmail", "middleware/otelmw"]
+        module: [".", "transport/smtp", "transport/sendmail", "transport/ses", "middleware/otelmw"]
     defaults:
       run:
         working-directory: ${{ matrix.module }}
