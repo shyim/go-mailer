@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Multi-module workspace: the root module (abstractions + null), the
+        # opt-in transport plug-ins (smtp, sendmail), and the optional otelmw
+        # submodule (which carries the OpenTelemetry deps).
+        module: [".", "transport/smtp", "transport/sendmail", "middleware/otelmw"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+          cache-dependency-path: "**/go.sum"
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.12.2
+          working-directory: ${{ matrix.module }}
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [".", "transport/smtp", "transport/sendmail", "middleware/otelmw"]
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache: true
+          cache-dependency-path: "**/go.sum"
+      - name: Verify formatting
+        run: |
+          fmtout=$(gofmt -l .)
+          if [ -n "$fmtout" ]; then
+            echo "These files are not gofmt-clean:"; echo "$fmtout"; exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: go test (race + coverage)
+        run: go test -race -coverprofile=coverage.out ./...

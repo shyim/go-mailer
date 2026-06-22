@@ -1,0 +1,58 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errcheck
+    - errorlint
+    - gocritic
+    - govet
+    - ineffassign
+    - misspell
+    - nilerr
+    - nolintlint
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - wastedassign
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    revive:
+      rules:
+        - name: exported
+          arguments:
+            - disableStutteringCheck
+    govet:
+      enable:
+        - shadow
+
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # Test files may ignore errors on best-effort calls and use fakes freely.
+      - path: _test\.go
+        linters:
+          - errcheck
+          - unparam
+          - gocritic
+          # SMTP/sendmail tests intentionally ignore Send errors in setup paths.
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/shyim/go-mailer

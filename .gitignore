@@ -1,0 +1,18 @@
+# Test & coverage artifacts
+*.out
+*.test
+coverage.*
+
+# Build output
+/bin/
+/dist/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Zensical build output
+/site/
+.cache/
