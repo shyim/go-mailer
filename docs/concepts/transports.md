@@ -19,6 +19,7 @@ observability spans, and the composite/router labels below.
 |-----------|-------------|-----------------------|-------|
 | SMTP / ESMTP | `smtp.NewTransport(host, port, tlsOnConnect)` | `smtp://host` / `smtps://host` | STARTTLS, AUTH PLAIN/LOGIN/CRAM-MD5, restart & ping thresholds, SMTPUTF8 |
 | Sendmail | `sendmail.NewSendmailTransport(command)` | `smtp://sendmail` | pipes raw MIME to a `-t` mode binary (`-bs` not supported) |
+| Amazon SES | `ses.New(ctx, opts...)` | `ses://` / `ses://<region>` | SES v2 `SendEmail` with raw MIME; see the [SES guide](../guides/ses.md) |
 | Null | `transport.NewNullTransport()` | `null://` | discards everything |
 | RoundRobin | `transport.NewRoundRobinTransport(ts, retryPeriod)` | `roundrobin(a b)` | rotates per send, skips dead transports until `retryPeriod` |
 | Failover | `transport.NewFailoverTransport(ts, retryPeriod)` | `failover(a b)` | sticky current transport, advances on failure |

@@ -33,6 +33,7 @@ own module:
 | `github.com/shyim/go-mailer` | (root) | abstractions, MIME builder, `null` transport, composites (round-robin / failover) + router, DSN registry, the `middleware` core, and the `mailertest` recorder |
 | `github.com/shyim/go-mailer/transport/smtp` | `go get github.com/shyim/go-mailer/transport/smtp` | the ESMTP transport (STARTTLS, AUTH, restart/ping thresholds) |
 | `github.com/shyim/go-mailer/transport/sendmail` | `go get github.com/shyim/go-mailer/transport/sendmail` | the local `sendmail` binary transport |
+| `github.com/shyim/go-mailer/transport/ses` | `go get github.com/shyim/go-mailer/transport/ses` | the Amazon SES transport (isolates the AWS SDK) |
 | `github.com/shyim/go-mailer/middleware/otelmw` | `go get github.com/shyim/go-mailer/middleware/otelmw` | OpenTelemetry traces + metrics adapter |
 
 The root module already includes the `middleware` package (the stdlib-only
