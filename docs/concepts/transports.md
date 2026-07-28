@@ -76,6 +76,12 @@ t := transport.NewNullTransport()
 Accepts and discards everything. Useful as a wiring placeholder or in environments
 where mail must never actually leave.
 
+### Suppression Capabilities
+
+Transports may optionally implement the `gomailer.SuppressionProvider` interface to support querying email suppression lists (e.g. bounce/complaint suppression lists).
+
+For example, the **Amazon SES** transport implements `gomailer.SuppressionProvider` to query the account-level suppression list, and additionally provides an `IsSuppressed(ctx, email)` method to check specific addresses. See the [SES guide](../guides/ses.md) for usage details.
+
 ## Composites: RoundRobin vs Failover
 
 Both wrap a slice of transports and fail over on a transport-level error, but they
