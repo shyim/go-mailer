@@ -95,6 +95,79 @@ ses://ACCESS_KEY:SECRET_KEY@default?region=us-east-1&configuration_set=prod
     infrastructure. A session token cannot be expressed in a DSN; use
     `WithCredentials` for temporary credentials.
 
+## Suppression list
+
+The SES transport supports querying and managing the AWS SES account-level suppression list by implementing the optional `gomailer.SuppressionProvider` interface.
+
+To use this feature, type-assert the transport:
+
+```go
+import (
+	"context"
+	"fmt"
+
+	"github.com/shyim/go-mailer"
+)
+
+func checkSuppressions(ctx context.Context, tr gomailer.Transport) {
+	if sp, ok := tr.(gomailer.SuppressionProvider); ok {
+		suppressions, err := sp.ListSuppressions(ctx)
+		if err != nil {
+			// Handle transport error
+			return
+		}
+		for _, s := range suppressions {
+			fmt.Printf("Email: %s, Reason: %s, UpdatedAt: %v\n", s.Email, s.Reason, s.UpdatedAt)
+		}
+	}
+}
+```
+
+You can also check if a specific address is suppressed using the transport directly:
+
+```go
+if trSES, ok := tr.(*ses.Transport); ok {
+	supp, suppressed, err := trSES.IsSuppressed(ctx, "rcpt@example.com")
+	if err != nil {
+		// Handle error
+	} else if suppressed {
+		fmt.Printf("Address %s is suppressed because: %s\n", supp.Email, supp.Reason)
+	}
+}
+```
+
+### Filtering recipients with middleware
+
+By combining `IsSuppressed` with `middleware.BeforeSend`, you can automatically skip sending to addresses that are suppressed in AWS SES to prevent reputation damage:
+
+```go
+import (
+	"context"
+
+	"github.com/shyim/go-mailer"
+	"github.com/shyim/go-mailer/middleware"
+	"github.com/shyim/go-mailer/transport/ses"
+)
+
+func NewMailerWithSuppressionFilter(tr *ses.Transport) *gomailer.Mailer {
+	filter := middleware.BeforeSend(func(ctx context.Context, msg *gomailer.Message, env *gomailer.Envelope) error {
+		for _, rcpt := range env.Recipients() {
+			_, suppressed, err := tr.IsSuppressed(ctx, rcpt.Email())
+			if err != nil {
+				return err
+			}
+			if suppressed {
+				// Rejecting the send silently skips delivery and reports success
+				return middleware.ErrReject
+			}
+		}
+		return nil
+	})
+
+	return gomailer.NewMailer(middleware.Wrap(tr, filter))
+}
+```
+
 ## Behavior notes
 
 - **Envelope vs. headers** — the envelope sender becomes the SES
