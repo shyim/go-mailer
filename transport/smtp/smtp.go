@@ -244,8 +244,8 @@ func (t *Transport) computeName() string {
 func (t *Transport) String() string { return t.computeName() }
 
 // Send runs the send pipeline (via BaseTransport) and applies the restart
-// threshold. On a transport error it attempts an RSET so the connection can be
-// reused for the next message instead of being torn down.
+// threshold. Transient response retries reconnect before retrying; other
+// transport errors attempt RSET so the connection can be reused.
 func (t *Transport) Send(ctx context.Context, msg gomailer.RawMessage, envelope *gomailer.Envelope) (*gomailer.SentMessage, error) {
 	for attempt := 0; ; attempt++ {
 		sm, err := t.BaseTransport.Send(ctx, msg, envelope)
@@ -255,15 +255,23 @@ func (t *Transport) Send(ctx context.Context, msg gomailer.RawMessage, envelope 
 			t.mu.Unlock()
 			return sm, nil
 		}
+		retry := isTransientSMTPError(err) && attempt < t.retryAttempts
 		// A local validation failure (ErrInvalidArgument, e.g. SMTPUTF8 needed
 		// but unsupported) is not a transport error and did not put the
 		// connection in a state needing teardown, so skip it for those.
 		if !errors.Is(err, gomailer.ErrInvalidArgument) {
 			t.mu.Lock()
-			t.terminate()
+			if retry {
+				t.terminate()
+			} else if t.started {
+				// Best-effort reset; ignore failures (server may be done with us).
+				if _, rerr := t.executeCommand("RSET\r\n", []int{250}); rerr != nil {
+					t.terminate()
+				}
+			}
 			t.mu.Unlock()
 		}
-		if !isTransientSMTPError(err) || attempt >= t.retryAttempts {
+		if !retry {
 			return nil, err
 		}
 		if err := waitForRetry(ctx, t.retryDelay); err != nil {
