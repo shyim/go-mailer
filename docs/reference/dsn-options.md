@@ -58,6 +58,8 @@ options below are parsed by the SMTP factory.
 | `restart_threshold` | int | _unset_ | Reconnect after this many messages on one connection. |
 | `restart_threshold_sleep` | int (seconds) | `0` | Sleep this many seconds during a restart. Only meaningful alongside `restart_threshold`. |
 | `ping_threshold` | int (seconds) | _unset_ | Send a `NOOP` keep-alive if the connection has been idle longer than this. |
+| `retry_attempts` | int | `1` | Retry explicit transient (`4xx`) SMTP responses this many times using fresh connections. `0` disables retries. |
+| `retry_delay` | duration | `250ms` | Delay between transient SMTP retries (for example, `1s`). Setting this alone retains the default one retry. |
 
 !!! note "`timeout` is not a DSN option"
     The per-operation socket timeout is **not** parsed from the DSN. Configure

@@ -40,3 +40,16 @@ func TestFromDSNResolvesSchemes(t *testing.T) {
 		t.Fatalf("FromDSN(bogus) error = %v, want ErrUnsupportedScheme", err)
 	}
 }
+
+func TestFromDSNRejectsInvalidRetryOptions(t *testing.T) {
+	for _, dsn := range []string{
+		"smtp://host:25?retry_attempts=-1",
+		"smtp://host:25?retry_attempts=one",
+		"smtp://host:25?retry_delay=not-a-duration",
+		"smtp://host:25?retry_delay=-1s",
+	} {
+		if _, err := transport.FromDSN(dsn, transport.Deps{}); !errors.Is(err, gomailer.ErrInvalidArgument) {
+			t.Errorf("FromDSN(%q) error = %v, want ErrInvalidArgument", dsn, err)
+		}
+	}
+}

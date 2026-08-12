@@ -25,9 +25,11 @@ type fakeTransport struct {
 	// onSend, if set, is invoked with the envelope the transport receives, so
 	// tests can assert that upstream middleware mutations reached the leaf.
 	onSend func(env *gomailer.Envelope)
+	closed int
 }
 
 func (f *fakeTransport) String() string { return f.name }
+func (f *fakeTransport) Close() error   { f.closed++; return nil }
 
 func (f *fakeTransport) Send(ctx context.Context, msg gomailer.RawMessage, env *gomailer.Envelope) (*gomailer.SentMessage, error) {
 	f.calls++
@@ -229,6 +231,26 @@ func TestWrap_SkipsNilEntries(t *testing.T) {
 	}
 	if len(order) != 2 || order[0] != "A" || order[1] != "B" {
 		t.Fatalf("order = %v, want [A B]", order)
+	}
+}
+
+func TestMiddlewareDecoratorsForwardClose(t *testing.T) {
+	leaf := &fakeTransport{name: "leaf"}
+	wrapped := middleware.Wrap(
+		leaf,
+		middleware.BeforeSend(func(context.Context, *gomailer.Message, *gomailer.Envelope) error { return nil }),
+		middleware.AfterSend(func(context.Context, *gomailer.SentMessage, error) {}),
+		middleware.Observability(middleware.WithMeter(newFakeMeter())),
+	)
+	closer, ok := wrapped.(interface{ Close() error })
+	if !ok {
+		t.Fatal("wrapped transport does not implement Close")
+	}
+	if err := closer.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if leaf.closed != 1 {
+		t.Fatalf("leaf Close calls = %d, want 1", leaf.closed)
 	}
 }
 
