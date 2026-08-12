@@ -105,6 +105,22 @@ hanging the goroutine indefinitely. There are two ways to change this:
 A context deadline always wins over `SetTimeout`. Use the context for
 per-request budgets and `SetTimeout` for a transport-wide default.
 
+## Transient SMTP responses are retried
+
+The SMTP transport retries one explicit `4xx` SMTP response on a fresh
+connection after 250ms. This includes SES `451 4.4.2` DATA timeouts. A final
+`4xx` response means the server rejected the transaction, so retrying the same
+message is safe. Control this behavior with `SetRetry`, or the
+`retry_attempts` and `retry_delay` DSN options:
+
+```go
+t := smtp.NewTransport("smtp.example.com", 587, false).
+    SetRetry(2, time.Second)
+```
+
+Set the attempt count to zero to disable retries. Retries always honor context
+cancellation and deadlines.
+
 ## Graceful shutdown
 
 `Mailer`, and the `RoundRobin` / `Failover` / `Transports` composites, all

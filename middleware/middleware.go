@@ -1,6 +1,10 @@
 package middleware
 
-import gomailer "github.com/shyim/go-mailer"
+import (
+	"io"
+
+	gomailer "github.com/shyim/go-mailer"
+)
 
 // Middleware decorates a gomailer.Transport, returning a transport that wraps
 // the given one. Implementations should call the wrapped transport's Send and
@@ -42,4 +46,11 @@ func Chain(mws ...Middleware) Middleware {
 	return func(t gomailer.Transport) gomailer.Transport {
 		return Wrap(t, mws...)
 	}
+}
+
+func closeTransport(t gomailer.Transport) error {
+	if c, ok := t.(io.Closer); ok {
+		return c.Close()
+	}
+	return nil
 }

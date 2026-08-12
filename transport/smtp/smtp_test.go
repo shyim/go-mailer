@@ -20,11 +20,13 @@ import (
 // put on the wire. responses maps a command prefix (uppercased) to the line the
 // server should reply with; unmatched commands get "250 OK".
 type fakeSMTPServer struct {
-	ln        net.Listener
-	mu        sync.Mutex
-	commands  []string
-	data      strings.Builder
-	responses map[string]string
+	ln                 net.Listener
+	mu                 sync.Mutex
+	commands           []string
+	data               strings.Builder
+	responses          map[string]string
+	finalResponses     []string
+	finalResponseCount int
 }
 
 func newFakeSMTPServer(t *testing.T, responses map[string]string) *fakeSMTPServer {
@@ -34,6 +36,24 @@ func newFakeSMTPServer(t *testing.T, responses map[string]string) *fakeSMTPServe
 		t.Fatalf("listen: %v", err)
 	}
 	s := &fakeSMTPServer{ln: ln, responses: responses}
+	go s.serve()
+	t.Cleanup(func() { _ = ln.Close() })
+	return s
+}
+
+func newRetrySMTPServer(t *testing.T) *fakeSMTPServer {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	s := &fakeSMTPServer{
+		ln: ln,
+		finalResponses: []string{
+			"451 4.4.2 Timeout waiting for data from client",
+			"250 Ok: queued as RETRIED",
+		},
+	}
 	go s.serve()
 	t.Cleanup(func() { _ = ln.Close() })
 	return s
@@ -55,10 +75,16 @@ func (s *fakeSMTPServer) reply(cmd string) string {
 }
 
 func (s *fakeSMTPServer) serve() {
-	conn, err := s.ln.Accept()
-	if err != nil {
-		return
+	for {
+		conn, err := s.ln.Accept()
+		if err != nil {
+			return
+		}
+		go s.serveConnection(conn)
 	}
+}
+
+func (s *fakeSMTPServer) serveConnection(conn net.Conn) {
 	defer conn.Close()
 	r := bufio.NewReader(conn)
 	w := bufio.NewWriter(conn)
@@ -81,7 +107,14 @@ func (s *fakeSMTPServer) serve() {
 		if inData {
 			if trimmed == "." {
 				inData = false
-				write("250 Ok: queued as ABC123")
+				response := "250 Ok: queued as ABC123"
+				s.mu.Lock()
+				if s.finalResponseCount < len(s.finalResponses) {
+					response = s.finalResponses[s.finalResponseCount]
+				}
+				s.finalResponseCount++
+				s.mu.Unlock()
+				write(response)
 				continue
 			}
 			s.mu.Lock()
@@ -117,6 +150,12 @@ func (s *fakeSMTPServer) serve() {
 			write(s.reply(trimmed))
 		}
 	}
+}
+
+func (s *fakeSMTPServer) finalResponseCalls() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.finalResponseCount
 }
 
 func (s *fakeSMTPServer) recordedCommands() []string {
@@ -177,6 +216,27 @@ func TestSMTPConversation(t *testing.T) {
 	// Message-ID is parsed from the "250 Ok: queued as ABC123" final response.
 	if sm.MessageID() != "ABC123" {
 		t.Errorf("MessageID = %q, want ABC123", sm.MessageID())
+	}
+}
+
+func TestSMTPRetriesTransientFinalResponse(t *testing.T) {
+	srv := newRetrySMTPServer(t)
+	host, port := srv.addr()
+	tr := NewTransport(host, port, false)
+	tr.SetAutoTLS(false).SetRetry(1, 0)
+	t.Cleanup(func() { _ = tr.Close() })
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	sm, err := tr.Send(ctx, buildMessage(t), nil)
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+	if sm.MessageID() != "RETRIED" {
+		t.Fatalf("MessageID = %q, want RETRIED", sm.MessageID())
+	}
+	if got := srv.finalResponseCalls(); got != 2 {
+		t.Fatalf("final DATA responses = %d, want 2", got)
 	}
 }
 

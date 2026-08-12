@@ -138,6 +138,8 @@ type obsTransport struct {
 // RoundRobin/Failover identity logic.
 func (o *obsTransport) String() string { return o.next.String() }
 
+func (o *obsTransport) Close() error { return closeTransport(o.next) }
+
 // Send wraps next.Send with a span and metrics. Attribute derivation:
 //   - messaging.system          = "gomailer" (constant)
 //   - messaging.destination.name = transport name from o.next.String()
