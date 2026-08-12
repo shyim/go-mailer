@@ -64,6 +64,8 @@ type beforeSendTransport struct {
 // to RoundRobin/Failover identity logic.
 func (b *beforeSendTransport) String() string { return b.next.String() }
 
+func (b *beforeSendTransport) Close() error { return closeTransport(b.next) }
+
 // Send derives the envelope when needed, runs the hook, then forwards to next.
 func (b *beforeSendTransport) Send(ctx context.Context, msg gomailer.RawMessage, envelope *gomailer.Envelope) (*gomailer.SentMessage, error) {
 	if m, ok := msg.(*gomailer.Message); ok {
@@ -123,6 +125,8 @@ type afterSendTransport struct {
 
 // String delegates to the wrapped transport.
 func (a *afterSendTransport) String() string { return a.next.String() }
+
+func (a *afterSendTransport) Close() error { return closeTransport(a.next) }
 
 // Send forwards to next, then hands the result to fn before returning it.
 func (a *afterSendTransport) Send(ctx context.Context, msg gomailer.RawMessage, envelope *gomailer.Envelope) (*gomailer.SentMessage, error) {

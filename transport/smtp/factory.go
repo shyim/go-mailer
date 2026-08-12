@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	gomailer "github.com/shyim/go-mailer"
 	"github.com/shyim/go-mailer/transport"
@@ -46,7 +47,8 @@ func (f *EsmtpFactory) SupportedSchemes() []string {
 
 // Create builds the configured Transport from the DSN, honoring auto_tls,
 // require_tls, verify_peer, source_ip, local_domain, max_per_second,
-// restart_threshold(_sleep), ping_threshold and the user/password credentials.
+// restart_threshold(_sleep), ping_threshold, retry_attempts, retry_delay and
+// the user/password credentials.
 func (f *EsmtpFactory) Create(d *transport.DSN, _ transport.Deps) (gomailer.Transport, error) {
 	if !f.Supports(d) {
 		return nil, fmt.Errorf("%w: %q (supported by smtp: %q)", gomailer.ErrUnsupportedScheme, d.Scheme(), "smtp, smtps")
@@ -155,6 +157,27 @@ func (f *EsmtpFactory) Create(d *transport.DSN, _ transport.Deps) (gomailer.Tran
 			return nil, fmt.Errorf("%w: invalid ping_threshold %q: %w", gomailer.ErrInvalidArgument, pt, err)
 		}
 		t.SetPingThreshold(seconds)
+	}
+
+	if ra := d.Option("retry_attempts", ""); ra != "" {
+		attempts, err := strconv.Atoi(ra)
+		if err != nil || attempts < 0 {
+			return nil, fmt.Errorf("%w: invalid retry_attempts %q", gomailer.ErrInvalidArgument, ra)
+		}
+		delay := defaultRetryDelay
+		if rd := d.Option("retry_delay", ""); rd != "" {
+			delay, err = time.ParseDuration(rd)
+			if err != nil || delay < 0 {
+				return nil, fmt.Errorf("%w: invalid retry_delay %q", gomailer.ErrInvalidArgument, rd)
+			}
+		}
+		t.SetRetry(attempts, delay)
+	} else if rd := d.Option("retry_delay", ""); rd != "" {
+		delay, err := time.ParseDuration(rd)
+		if err != nil || delay < 0 {
+			return nil, fmt.Errorf("%w: invalid retry_delay %q", gomailer.ErrInvalidArgument, rd)
+		}
+		t.SetRetry(defaultRetryAttempts, delay)
 	}
 
 	return t, nil

@@ -30,6 +30,13 @@ import (
 // handled many messages.
 const defaultRestartThreshold = 100
 
+// defaultRetryAttempts is the number of retries for an explicit transient SMTP
+// response. Retries use a fresh connection because the failed transaction may
+// have left the current connection unusable.
+const defaultRetryAttempts = 1
+
+const defaultRetryDelay = 250 * time.Millisecond
+
 // defaultPingThreshold is the number of seconds of idleness after which the
 // server is pinged (NOOP) before sending the next message.
 const defaultPingThreshold = 100
@@ -80,6 +87,8 @@ type Transport struct {
 	restartCounter        int
 	pingThreshold         int
 	ioTimeout             time.Duration
+	retryAttempts         int
+	retryDelay            time.Duration
 
 	mu              sync.Mutex
 	conn            net.Conn
@@ -113,6 +122,8 @@ func NewTransport(host string, port int, tlsOnConnect bool) *Transport {
 		restartThreshold: defaultRestartThreshold,
 		pingThreshold:    defaultPingThreshold,
 		ioTimeout:        defaultIOTimeout,
+		retryAttempts:    defaultRetryAttempts,
+		retryDelay:       defaultRetryDelay,
 		capabilities:     map[string][]string{},
 		// Prefer PLAIN/LOGIN (used over an established TLS channel by default)
 		// over the legacy CRAM-MD5 (HMAC-MD5, requires recoverable server-side
@@ -157,6 +168,18 @@ func (t *Transport) SetAllowPlaintextAuth(v bool) *Transport { t.allowPlaintextA
 // the risk of a hung server blocking a send indefinitely). A context deadline,
 // when present, always takes precedence over this value.
 func (t *Transport) SetTimeout(d time.Duration) *Transport { t.ioTimeout = d; return t }
+
+// SetRetry configures retries for explicit transient (4xx) SMTP responses.
+// Attempts <= 0 disables retries. The delay is applied between attempts; a
+// non-positive delay retries immediately.
+func (t *Transport) SetRetry(attempts int, delay time.Duration) *Transport {
+	if attempts < 0 {
+		attempts = 0
+	}
+	t.retryAttempts = attempts
+	t.retryDelay = delay
+	return t
+}
 
 // SetLocalDomain sets the HELO/EHLO domain. Bare IPv4/IPv6 literals are wrapped
 // in brackets per RFC 5321 section 4.1.3.
@@ -224,27 +247,48 @@ func (t *Transport) String() string { return t.computeName() }
 // threshold. On a transport error it attempts an RSET so the connection can be
 // reused for the next message instead of being torn down.
 func (t *Transport) Send(ctx context.Context, msg gomailer.RawMessage, envelope *gomailer.Envelope) (*gomailer.SentMessage, error) {
-	sm, err := t.BaseTransport.Send(ctx, msg, envelope)
-	if err != nil {
+	for attempt := 0; ; attempt++ {
+		sm, err := t.BaseTransport.Send(ctx, msg, envelope)
+		if err == nil {
+			t.mu.Lock()
+			t.checkRestartThreshold()
+			t.mu.Unlock()
+			return sm, nil
+		}
 		// A local validation failure (ErrInvalidArgument, e.g. SMTPUTF8 needed
 		// but unsupported) is not a transport error and did not put the
-		// connection in a state needing RSET, so skip it for those.
+		// connection in a state needing teardown, so skip it for those.
 		if !errors.Is(err, gomailer.ErrInvalidArgument) {
 			t.mu.Lock()
-			if t.started {
-				// best-effort reset; ignore failures (server may be done with us)
-				if _, rerr := t.executeCommand("RSET\r\n", []int{250}); rerr != nil {
-					t.terminate()
-				}
-			}
+			t.terminate()
 			t.mu.Unlock()
 		}
-		return nil, err
+		if !isTransientSMTPError(err) || attempt >= t.retryAttempts {
+			return nil, err
+		}
+		if err := waitForRetry(ctx, t.retryDelay); err != nil {
+			return nil, err
+		}
 	}
-	t.mu.Lock()
-	t.checkRestartThreshold()
-	t.mu.Unlock()
-	return sm, err
+}
+
+func isTransientSMTPError(err error) bool {
+	var te *gomailer.TransportError
+	return errors.As(err, &te) && te.Code >= 400 && te.Code < 500
+}
+
+func waitForRetry(ctx context.Context, delay time.Duration) error {
+	if delay <= 0 {
+		return ctx.Err()
+	}
+	timer := time.NewTimer(delay)
+	defer timer.Stop()
+	select {
+	case <-timer.C:
+		return ctx.Err()
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // doSend is the BaseTransport.DoSend hook performing the SMTP conversation.
