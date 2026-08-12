@@ -286,8 +286,11 @@ func isTransientSMTPError(err error) bool {
 }
 
 func waitForRetry(ctx context.Context, delay time.Duration) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if delay <= 0 {
-		return ctx.Err()
+		return nil
 	}
 	timer := time.NewTimer(delay)
 	defer timer.Stop()
